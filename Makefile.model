@@ -1,0 +1,5 @@
+all: data/dicoms.col
+
+data/dicoms.col:
+	@rm -f $@
+	find data/ -name \*.dcm -print0 | sort -z | xargs -0 scripts/load-dicom.py --output-path=$@
