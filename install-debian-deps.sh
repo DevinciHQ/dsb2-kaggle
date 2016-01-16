@@ -1,7 +1,7 @@
 #!/bin/bash
 
 apt-get install \
-  automake 
+  automake  \
   build-essential \
   libglew-dev \
   libgsl0-dev \
