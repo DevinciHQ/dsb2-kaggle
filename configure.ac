@@ -1,0 +1,55 @@
+AC_INIT([dsb2], [1.0])
+AM_INIT_AUTOMAKE([foreign nostdinc subdir-objects])
+
+AC_CONFIG_MACRO_DIR([m4])
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+AC_CANONICAL_HOST
+
+AC_GNU_SOURCE
+
+PKG_CHECK_MODULES([CAPNP], [capnp])
+PKG_CHECK_MODULES([GL], [gl >= 8 glew])
+PKG_CHECK_MODULES([GSL], [gsl])
+PKG_CHECK_MODULES([LIBLZ4], [liblz4])
+PKG_CHECK_MODULES([LIBLZMA], [liblzma])
+PKG_CHECK_MODULES([X11], [x11 >= 1.4])
+PKG_CHECK_MODULES([ZLIB], [zlib])
+
+AM_PROG_AR
+AM_PROG_CC_C_O
+AC_PROG_CXX
+AC_PROG_INSTALL
+AC_PROG_MAKE_SET
+
+LT_INIT
+
+AC_LANG_PUSH([C++])
+AC_CHECK_HEADER(
+  [snappy.h], [AC_CHECK_LIB([snappy], [snappy_compress], [], [])], [])
+
+AX_CXX_COMPILE_STDCXX_14([ext])
+AC_LANG_POP([C++])
+
+CFLAGS="$CFLAGS -fuse-ld=gold $OPENMP_CFLAGS"
+CXXFLAGS="$CXXFLAGS -fuse-ld=gold $OPENMP_CXXFLAGS"
+
+AM_CONDITIONAL(HAVE_LIBSNAPPY, [test "x$HAVE_LIBSNAPPY" = "x1" ])
+
+AX_AC_EXPAND([BINDIR], $bindir)
+AX_AC_EXPAND([LIBDIR], $libdir)
+AX_AC_EXPAND([LOCALSTATEDIR], $localstatedir)
+AX_AC_EXPAND([SYSCONFDIR], $sysconfdir)
+AX_AC_EXPAND([DATAROOTDIR], $datarootdir)
+
+AC_DEFINE_UNQUOTED([BINDIR], ["$BINDIR"], [Path of user executables])
+AC_DEFINE_UNQUOTED([LIBDIR], ["$LIBDIR"], [Path of object code libraries])
+AC_DEFINE_UNQUOTED([LOCALSTATEDIR], ["$LOCALSTATEDIR"], [Path of local state])
+AC_DEFINE_UNQUOTED([SYSCONFDIR], ["$SYSCONFDIR"], [Path of system configuration])
+AC_DEFINE_UNQUOTED([DATAROOTDIR], ["$DATAROOTDIR"], [Path of data])
+AC_DEFINE_UNQUOTED([MAXSYSLOGMSGLEN], [10240], [Define to the maximum message length to pass to syslog.])
+
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
