@@ -28,7 +28,8 @@
 
 namespace {
 
-auto Pow2(auto v) { return v * v; }
+template <typename T>
+T Pow2(T v) { return v * v; }
 
 static GLuint create_texture(const void* data, unsigned int width,
                              unsigned int height) {

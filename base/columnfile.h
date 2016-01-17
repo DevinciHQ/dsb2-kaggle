@@ -17,7 +17,7 @@ namespace ev {
 
 class StringRefOrNull {
  public:
-  StringRefOrNull(nullptr_t) : null_(true) {}
+  StringRefOrNull(std::nullptr_t) : null_(true) {}
   StringRefOrNull(ev::StringRef str) : string_(str) {}
 
   bool IsNull() const { return null_; }
