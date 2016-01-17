@@ -20,33 +20,6 @@ namespace {
 
 using namespace columnfile_internal;
 
-uint32_t GetUInt(StringRef& input) {
-  auto begin = reinterpret_cast<const uint8_t*>(input.begin());
-  auto i = begin;
-  uint32_t b = *i++;
-  uint32_t result = b & 127;
-  if (b < 0x80) goto done;
-  b = *i++;
-  result |= (b & 127) << 6;
-  if (b < 0x80) goto done;
-  b = *i++;
-  result |= (b & 127) << 13;
-  if (b < 0x80) goto done;
-  b = *i++;
-  result |= (b & 127) << 20;
-  if (b < 0x80) goto done;
-  b = *i++;
-  result |= b << 27;
-done:
-  input.Consume(i - begin);
-  return result;
-}
-
-int32_t GetInt(StringRef& input) {
-  const auto u = GetUInt(input);
-  return (u >> 1) ^ -((int32_t)(u & 1));
-}
-
 class ColumnFileFdInput : public ColumnFileInput {
  public:
   ColumnFileFdInput(kj::AutoCloseFd fd) : fd_(std::move(fd)) {
@@ -75,6 +48,12 @@ class ColumnFileFdInput : public ColumnFileInput {
     buffer_.clear();
     end_ = false;
   }
+
+  // TODO(mortehu): Implement.
+  size_t Size() const override { return 0; }
+
+  // TODO(mortehu): Implement.
+  size_t Offset() const override { return 0; }
 
  private:
   struct FieldMeta {
@@ -117,6 +96,10 @@ class ColumnFileStringInput : public ColumnFileInput {
   bool End() const override { return data_.empty(); }
 
   void SeekToStart() override { data_ = input_data_; }
+
+  size_t Size() const override { return input_data_.size(); }
+
+  size_t Offset() const override { return input_data_.size() - data_.size(); }
 
  private:
   struct FieldMeta {
@@ -487,7 +470,9 @@ void ColumnFileReader::FieldReader::Fill() {
 
   if (!repeat_) {
     repeat_ = GetUInt(data_);
-    KJ_REQUIRE(0 == GetUInt(data_));  // Reserved field
+
+    const auto reserved = GetUInt(data_);
+    KJ_REQUIRE(reserved == 0, reserved);
 
     auto b0 = static_cast<uint8_t>(data_[0]);
 

@@ -5,29 +5,30 @@
 
 #include <Python.h>
 
-namespace ev {
+namespace ev_python {
 
-class ScopedPyObject {
+class ScopedObject {
  public:
-  ScopedPyObject() {}
+  ScopedObject() {}
 
-  ScopedPyObject(PyObject* object) : object_(object) {}
+  ScopedObject(PyObject* object) : object_(object) {}
 
-  ScopedPyObject(ScopedPyObject&) = delete;
+  ScopedObject(ScopedObject&) = delete;
 
-  ScopedPyObject(ScopedPyObject&& rhs) { std::swap(object_, rhs.object_); }
+  ScopedObject(ScopedObject&& rhs) { std::swap(object_, rhs.object_); }
 
-  ~ScopedPyObject() {
+  ~ScopedObject() {
     if (object_) Py_DECREF(object_);
   }
 
-  explicit operator bool() const {
-    return object_ != nullptr;
-  }
+  explicit operator bool() const { return object_ != nullptr; }
 
-  ScopedPyObject& operator=(ScopedPyObject&) = delete;
+  bool operator==(std::nullptr_t) const { return object_ == nullptr; }
+  bool operator!=(std::nullptr_t) const { return object_ != nullptr; }
 
-  ScopedPyObject& operator=(ScopedPyObject&& rhs) {
+  ScopedObject& operator=(ScopedObject&) = delete;
+
+  ScopedObject& operator=(ScopedObject&& rhs) {
     if (object_) {
       Py_DECREF(object_);
       object_ = nullptr;

@@ -5,6 +5,7 @@
 
 #include "base/cat.h"
 #include "base/columnfile-capnp.h"
+#include "base/columnfile-internal.h"
 #include "base/columnfile.h"
 #include "base/file.h"
 #include "base/string.h"
@@ -232,7 +233,6 @@ TEST_F(ColumnFileTest, AFLTestCases) {
   }
 }
 
-#if 0
 TEST_F(ColumnFileTest, IntegerCoding) {
   static const uint32_t kTestNumbers[] = {
       0,          0x10U,      0x7fU,       0x80U,      0x100U,    0x1000U,
@@ -241,14 +241,13 @@ TEST_F(ColumnFileTest, IntegerCoding) {
 
   for (auto i : kTestNumbers) {
     std::string buffer;
-    ColumnFileWriter::PutInt(buffer, i);
+    ev::columnfile_internal::PutInt(buffer, i);
 
     EXPECT_TRUE((static_cast<uint8_t>(buffer[0]) & 0xc0) != 0xc0);
 
     ev::StringRef read_buffer(buffer);
-    auto decoded_int = ColumnFileReader::GetInt(read_buffer);
+    auto decoded_int = ev::columnfile_internal::GetInt(read_buffer);
     EXPECT_EQ(i, decoded_int);
     EXPECT_TRUE(read_buffer.empty());
   }
 }
-#endif

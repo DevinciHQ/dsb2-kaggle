@@ -3,16 +3,17 @@
 #include <kj/debug.h>
 
 #include "base/columnfile.h"
-#include "base/file.h"
 #include "python/object.h"
 
 namespace {
 
 class ColumnFileImpl : public ColumnFile {
  public:
-  ColumnFileImpl(const char* path) : column_file_writer_(path) {}
+  ColumnFileImpl(const char* path)
+      : region_pool_(1, 1), column_file_writer_(path) {}
 
-  ColumnFileImpl(kj::AutoCloseFd&& fd) : column_file_writer_(std::move(fd)) {}
+  ColumnFileImpl(kj::AutoCloseFd&& fd)
+      : region_pool_(1, 1), column_file_writer_(std::move(fd)) {}
 
   ~ColumnFileImpl() noexcept {}
 
@@ -23,7 +24,8 @@ class ColumnFileImpl : public ColumnFile {
 
   PyObject* set_flush_interval(PyObject* interval) override {
     if (!PyLong_Check(interval)) {
-      return PyErr_Format(PyExc_RuntimeError, "Interval argument must be long");
+      PyErr_Format(PyExc_RuntimeError, "Interval argument must be long");
+      return nullptr;
     }
 
     flush_interval_ = PyLong_AsLong(interval);
@@ -39,6 +41,8 @@ class ColumnFileImpl : public ColumnFile {
   PyObject* finish() override;
 
  private:
+  ev::concurrency::RegionPool region_pool_;
+
   ev::ColumnFileWriter column_file_writer_;
 
   bool save_double_as_float_ = false;
@@ -52,88 +56,43 @@ class ColumnFileImpl : public ColumnFile {
 
 PyObject* ColumnFileImpl::add_row(PyObject* row) {
   try {
+    ev_python::ScopedObject iterator(PyObject_GetIter(row));
+    if (!iterator.get()) return nullptr;
+
+    auto region = region_pool_.GetRegion();
+
     std::vector<std::pair<uint32_t, ev::StringRefOrNull>> row_vec;
-    std::vector<std::vector<char>> buffers;
 
-    const auto add_item = [this, &row_vec, &buffers](uint32_t idx,
-                                                     PyObject* value) {
-      if (PyString_Check(value)) {
-        row_vec.emplace_back(idx, ev::StringRef(PyString_AS_STRING(value),
-                                                PyString_Size(value)));
-      } else if (value == Py_None) {
+    for (uint32_t idx = 0;; ++idx) {
+      ev_python::ScopedObject item(PyIter_Next(iterator.get()));
+      if (!item.get()) break;
+
+      if (PyBytes_Check(item.get())) {
+        row_vec.emplace_back(idx, ev::StringRef(PyBytes_AS_STRING(item.get()),
+                                                PyBytes_GET_SIZE(item.get())));
+      } else if (PyUnicode_Check(item.get())) {
+        ev_python::ScopedObject bytes(PyUnicode_AsUTF8String(item.get()));
+        row_vec.emplace_back(
+            idx, ev::StringRef(PyBytes_AS_STRING(bytes.get()),
+                               PyBytes_GET_SIZE(bytes.get())).dup(region));
+      } else if (item.get() == Py_None) {
         row_vec.emplace_back(idx, nullptr);
-      } else if (PyInt_Check(value)) {
-        std::vector<char> buffer;
-
-        int v = PyInt_AsLong(value);
-        buffer.resize(sizeof(v));
-        memcpy(&buffer[0], &v, sizeof(v));
-
-        buffers.emplace_back(std::move(buffer));
-        row_vec.emplace_back(idx, ev::StringRef(buffers.back()));
-      } else if (PyLong_Check(value)) {
-        std::vector<char> buffer;
-
-        auto v = PyLong_AsLong(value);
-        buffer.resize(sizeof(v));
-        memcpy(&buffer[0], &v, sizeof(v));
-
-        buffers.emplace_back(std::move(buffer));
-        row_vec.emplace_back(idx, ev::StringRef(buffers.back()));
-      } else if (PyFloat_Check(value)) {
-        std::vector<char> buffer;
+      } else if (PyFloat_Check(item.get())) {
+        ev::StringRef buffer;
 
         if (!save_double_as_float_) {
-          double v = PyFloat_AS_DOUBLE(value);
-          buffer.resize(sizeof(v));
-          memcpy(&buffer[0], &v, sizeof(v));
+          double v = PyFloat_AS_DOUBLE(item.get());
+          buffer = ev::StringRef(reinterpret_cast<const char*>(&v), sizeof(v))
+                       .dup(region);
         } else {
-          float v = PyFloat_AS_DOUBLE(value);
-          buffer.resize(sizeof(v));
-          memcpy(&buffer[0], &v, sizeof(v));
+          float v = PyFloat_AS_DOUBLE(item.get());
+          buffer = ev::StringRef(reinterpret_cast<const char*>(&v), sizeof(v))
+                       .dup(region);
         }
 
-        buffers.emplace_back(std::move(buffer));
-        row_vec.emplace_back(idx, ev::StringRef(buffers.back()));
+        row_vec.emplace_back(idx, buffer);
       } else {
         KJ_FAIL_REQUIRE("Unsupported data type", idx);
-      }
-    };
-
-    if (PyDict_Check(row)) {
-      Py_ssize_t pos = 0;
-      PyObject* key;
-      PyObject* value;
-
-      while (1 == PyDict_Next(row, &pos, &key, &value)) {
-        long idx;
-        if (PyLong_Check(key)) {
-          idx = PyLong_AsLong(key);
-        } else if (PyIter_Check(key)) {
-          idx = PyInt_AsLong(key);
-        } else {
-          KJ_FAIL_REQUIRE("Unexpected key type");
-        }
-
-        KJ_REQUIRE(idx >= 0, idx);
-        KJ_REQUIRE(idx <= std::numeric_limits<uint32_t>::max(), idx);
-
-        add_item(idx, value);
-      }
-
-      std::sort(row_vec.begin(), row_vec.end(),
-                [](const auto& lhs, const auto& rhs) {
-                  return lhs.first < rhs.first;
-                });
-    } else {
-      ev::ScopedPyObject iterator(PyObject_GetIter(row));
-      if (!iterator.get()) return nullptr;
-
-      for (uint32_t idx = 0;; ++idx) {
-        ev::ScopedPyObject item(PyIter_Next(iterator.get()));
-        if (!item.get()) break;
-
-        add_item(idx, item.get());
       }
     }
 
@@ -145,9 +104,10 @@ PyObject* ColumnFileImpl::add_row(PyObject* row) {
       unflushed_ = 0;
     }
   } catch (kj::Exception e) {
-    return PyErr_Format(PyExc_RuntimeError,
-                        "Error adding row to columnfile: %s:%d: %s",
-                        e.getFile(), e.getLine(), e.getDescription().cStr());
+    PyErr_Format(PyExc_RuntimeError,
+                 "Error adding row to columnfile: %s:%d: %s", e.getFile(),
+                 e.getLine(), e.getDescription().cStr());
+    return nullptr;
   }
 
   Py_RETURN_NONE;
@@ -158,9 +118,9 @@ PyObject* ColumnFileImpl::flush() {
     column_file_writer_.Flush();
     unflushed_ = 0;
   } catch (kj::Exception e) {
-    return PyErr_Format(PyExc_RuntimeError,
-                        "Error flushing columnfile: %s:%d: %s", e.getFile(),
-                        e.getLine(), e.getDescription().cStr());
+    PyErr_Format(PyExc_RuntimeError, "Error flushing columnfile: %s:%d: %s",
+                 e.getFile(), e.getLine(), e.getDescription().cStr());
+    return nullptr;
   }
   Py_RETURN_NONE;
 }
@@ -169,9 +129,9 @@ PyObject* ColumnFileImpl::finish() {
   try {
     column_file_writer_.Finalize();
   } catch (kj::Exception e) {
-    return PyErr_Format(PyExc_RuntimeError,
-                        "Error finalizing columnfile: %s:%d: %s", e.getFile(),
-                        e.getLine(), e.getDescription().cStr());
+    PyErr_Format(PyExc_RuntimeError, "Error finalizing columnfile: %s:%d: %s",
+                 e.getFile(), e.getLine(), e.getDescription().cStr());
+    return nullptr;
   }
   Py_RETURN_NONE;
 }
@@ -182,19 +142,7 @@ ColumnFile::~ColumnFile() {}
 
 ColumnFile* ColumnFile::create(const char* path) {
   try {
-    auto file = ev::OpenFile(path, O_CREAT | O_RDWR | O_TRUNC | O_APPEND, 0666);
-    return new ColumnFileImpl(std::move(file));
-  } catch (kj::Exception e) {
-    PyErr_Format(PyExc_RuntimeError, "Error creating columnfile: %s:%d: %s",
-                 e.getFile(), e.getLine(), e.getDescription().cStr());
-    return nullptr;
-  }
-}
-
-ColumnFile* ColumnFile::append(const char* path) {
-  try {
-    auto file = ev::OpenFile(path, O_CREAT | O_RDWR | O_APPEND, 0666);
-    return new ColumnFileImpl(std::move(file));
+    return new ColumnFileImpl(path);
   } catch (kj::Exception e) {
     PyErr_Format(PyExc_RuntimeError, "Error creating columnfile: %s:%d: %s",
                  e.getFile(), e.getLine(), e.getDescription().cStr());

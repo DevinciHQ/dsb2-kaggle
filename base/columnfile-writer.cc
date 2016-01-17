@@ -20,36 +20,6 @@ namespace {
 
 using namespace columnfile_internal;
 
-void PutUInt(std::string& output, uint32_t value) {
-  if (value < (1 << 7)) {
-    output.push_back(value);
-  } else if (value < (1 << 13)) {
-    output.push_back((value & 0x3f) | 0x80);
-    output.push_back(value >> 6);
-  } else if (value < (1 << 20)) {
-    output.push_back((value & 0x3f) | 0x80);
-    output.push_back((value >> 6) | 0x80);
-    output.push_back(value >> 13);
-  } else if (value < (1 << 27)) {
-    output.push_back((value & 0x3f) | 0x80);
-    output.push_back((value >> 6) | 0x80);
-    output.push_back((value >> 13) | 0x80);
-    output.push_back(value >> 20);
-  } else {
-    output.push_back((value & 0x3f) | 0x80);
-    output.push_back((value >> 6) | 0x80);
-    output.push_back((value >> 13) | 0x80);
-    output.push_back((value >> 20) | 0x80);
-    output.push_back(value >> 27);
-  }
-}
-
-void PutInt(std::string& output, int32_t value) {
-  static const auto sign_shift = sizeof(value) * 8 - 1;
-
-  PutUInt(output, (value << 1) ^ (value >> sign_shift));
-}
-
 class ColumnFileFdOutput : public ColumnFileOutput {
  public:
   ColumnFileFdOutput(kj::AutoCloseFd fd) : fd_(std::move(fd)) {

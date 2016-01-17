@@ -17,6 +17,7 @@ PYTHON_LIB_DEPS = \
 
 python__dsb2_la_SOURCES = \
   generated/python/swig_wrap.cc \
+  python/columnfile-reader.cc \
   python/columnfile.cc
 python__dsb2_la_LDFLAGS = -module
 python__dsb2_la_CXXFLAGS = -fno-strict-aliasing

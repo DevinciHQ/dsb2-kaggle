@@ -27,6 +27,16 @@ class StringRefOrNull {
     return string_;
   }
 
+  bool operator==(const ev::StringRefOrNull& rhs) const {
+    if (null_) return rhs.null_;
+    if (rhs.null_) return false;
+    return string_ == rhs.string_;
+  }
+
+  bool operator!=(const ev::StringRefOrNull& rhs) const {
+    return !(*this == rhs);
+  }
+
  private:
   bool null_ = false;
   ev::StringRef string_;
@@ -138,6 +148,13 @@ class ColumnFileInput {
 
   // Seek to the beginning of the input.
   virtual void SeekToStart() = 0;
+
+  // Returns the size of the input, in an unspecified unit.
+  virtual size_t Size() const = 0;
+
+  // Returns the approximate offset, in an unspecified unit.  This value only
+  // makes sense when compared to the return value of `Size()`.
+  virtual size_t Offset() const = 0;
 };
 
 class ColumnFileReader {
@@ -184,6 +201,10 @@ class ColumnFileReader {
   void SeekToStart();
 
   void SeekToStartOfSegment();
+
+  size_t Size() const { return input_->Size(); }
+
+  size_t Offset() const { return input_->Offset(); }
 
  private:
   class FieldReader {
