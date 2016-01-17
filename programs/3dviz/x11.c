@@ -140,10 +140,10 @@ x11_ProcessEvent (XEvent *event)
           /* Do nothing */
         }
 
-      glViewport (0, 0, X11_window_width, X11_window_height);
-
       X11_window_width = event->xconfigure.width;
       X11_window_height = event->xconfigure.height;
+
+      glViewport (0, 0, X11_window_width, X11_window_height);
 
       break;
 
