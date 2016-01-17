@@ -812,15 +812,20 @@ int main(int argc, char** argv) try {
     std::unordered_set<uint32_t> verts;
     verts.insert(scene.indices.begin(), scene.indices.end());
 
-    glColor4f(1.0f, 1.0f, 1.0f, 0.1f);
-    glBegin(GL_LINES);
-    for (const auto i : verts) {
-      glVertex3fv(&scene.vertices[i].x);
+    if (false) {
+      // Surface normals.
 
-      const auto pt = (scene.vertices[i] + scene.normals[i] * 10.0f);
-      glVertex3fv(&pt.x);
+      glColor4f(1.0f, 1.0f, 1.0f, 0.1f);
+      glBegin(GL_LINES);
+      for (const auto i : verts) {
+        glVertex3fv(&scene.vertices[i].x);
+
+        const auto pt = (scene.vertices[i] + scene.normals[i] * 10.0f);
+        glVertex3fv(&pt.x);
+      }
+      glEnd();
     }
-    glEnd();
+
 #if 0
     glBegin(GL_LINES);
     glColor4f(1.0f, 0.0f, 0.0f, 0.8f);
