@@ -7,5 +7,6 @@ apt-get install \
   libgsl0-dev \
   liblz4-dev \
   liblzma-dev \
+  libsnappy-dev \
   libtool \
   swig3.0
