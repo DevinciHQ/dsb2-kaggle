@@ -137,15 +137,20 @@ void ColumnFileStringOutput::Flush(
 ColumnFileWriter::ColumnFileWriter(std::shared_ptr<ColumnFileOutput> output)
     : output_(std::move(output)) {}
 
-ColumnFileWriter::ColumnFileWriter(kj::AutoCloseFd&& fd)
-    : output_(std::make_shared<ColumnFileFdOutput>(std::move(fd))) {}
+ColumnFileWriter::ColumnFileWriter(kj::AutoCloseFd&& fd) {
+  auto ptr = new ColumnFileFdOutput(std::move(fd));
+  output_ = std::shared_ptr<ColumnFileOutput>(ptr);
+}
 
-ColumnFileWriter::ColumnFileWriter(const char* path, int mode)
-    : output_(std::make_shared<ColumnFileFdOutput>(
-          OpenFile(path, O_CREAT | O_WRONLY, mode))) {}
+ColumnFileWriter::ColumnFileWriter(const char* path, int mode) {
+  auto ptr = new ColumnFileFdOutput(OpenFile(path, O_CREAT | O_WRONLY, mode));
+  output_ = std::shared_ptr<ColumnFileOutput>(ptr);
+}
 
-ColumnFileWriter::ColumnFileWriter(std::string& output)
-    : output_(std::make_shared<ColumnFileStringOutput>(output)) {}
+ColumnFileWriter::ColumnFileWriter(std::string& output) {
+  auto ptr = new ColumnFileStringOutput(output);
+  output_ = std::shared_ptr<ColumnFileOutput>(ptr);
+}
 
 ColumnFileWriter::~ColumnFileWriter() { Finalize(); }
 
