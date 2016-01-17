@@ -23,8 +23,7 @@ class ColumnFileImpl : public ColumnFile {
 
   PyObject* set_flush_interval(PyObject* interval) override {
     if (!PyLong_Check(interval)) {
-      PyErr_Format(PyExc_RuntimeError, "Interval argument must be long");
-      return nullptr;
+      return PyErr_Format(PyExc_RuntimeError, "Interval argument must be long");
     }
 
     flush_interval_ = PyLong_AsLong(interval);
@@ -146,10 +145,9 @@ PyObject* ColumnFileImpl::add_row(PyObject* row) {
       unflushed_ = 0;
     }
   } catch (kj::Exception e) {
-    PyErr_Format(PyExc_RuntimeError,
-                 "Error adding row to columnfile: %s:%d: %s", e.getFile(),
-                 e.getLine(), e.getDescription().cStr());
-    return nullptr;
+    return PyErr_Format(PyExc_RuntimeError,
+                        "Error adding row to columnfile: %s:%d: %s",
+                        e.getFile(), e.getLine(), e.getDescription().cStr());
   }
 
   Py_RETURN_NONE;
@@ -160,9 +158,9 @@ PyObject* ColumnFileImpl::flush() {
     column_file_writer_.Flush();
     unflushed_ = 0;
   } catch (kj::Exception e) {
-    PyErr_Format(PyExc_RuntimeError, "Error flushing columnfile: %s:%d: %s",
-                 e.getFile(), e.getLine(), e.getDescription().cStr());
-    return nullptr;
+    return PyErr_Format(PyExc_RuntimeError,
+                        "Error flushing columnfile: %s:%d: %s", e.getFile(),
+                        e.getLine(), e.getDescription().cStr());
   }
   Py_RETURN_NONE;
 }
@@ -171,9 +169,9 @@ PyObject* ColumnFileImpl::finish() {
   try {
     column_file_writer_.Finalize();
   } catch (kj::Exception e) {
-    PyErr_Format(PyExc_RuntimeError, "Error finalizing columnfile: %s:%d: %s",
-                 e.getFile(), e.getLine(), e.getDescription().cStr());
-    return nullptr;
+    return PyErr_Format(PyExc_RuntimeError,
+                        "Error finalizing columnfile: %s:%d: %s", e.getFile(),
+                        e.getLine(), e.getDescription().cStr());
   }
   Py_RETURN_NONE;
 }
