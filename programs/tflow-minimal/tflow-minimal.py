@@ -14,10 +14,13 @@ parser = argparse.ArgumentParser(description='DSB2 Neural Net Model')
 parser.add_argument('--validation-output', metavar='validation_output', type=str, nargs='?',
                     help='path of validation output',
                     default=None)
+parser.add_argument('--view', metavar='view', type=str, nargs='?',
+                    help='view to use in model (2ch or 4ch)',
+                    default='2ch')
 args = parser.parse_args()
 
 # Matches frame 1 in each study.
-TRAINING_PATH_FILTER = re.compile(r'train/([0-9]+)/study/2ch_[0-9]+/.*-0001\.dcm')
+TRAINING_PATH_FILTER = re.compile(r'train/([0-9]+)/study/%s_[0-9]+/.*-0001\.dcm' % args.view)
 
 IMAGE_SIZE = 64
 
@@ -79,15 +82,15 @@ dsb2.ColumnFile_select(
 
 training_labels = ReadTrainingLabels()
 
-assert len(training_labels) == len(training_images)
-
 dataset = np.ndarray(
         shape=(len(training_images), IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
-labels = np.ndarray(shape=(len(training_labels), OUTPUT_COUNT), dtype=np.float32)
+labels = np.ndarray(shape=(len(training_images), OUTPUT_COUNT), dtype=np.float32)
 
 idx = 0
 
 for study, study_labels in training_labels.iteritems():
+  if study not in training_images:
+    continue
   dataset[idx, :, :] = training_images[study]
   labels[idx, :] = study_labels
   idx += 1
@@ -98,7 +101,7 @@ permutation = np.random.permutation(labels.shape[0])
 dataset = dataset[permutation, :, :]
 labels = labels[permutation, :]
 
-sample_count = len(training_labels)
+sample_count = len(training_images)
 
 # Per-fold validation losses.
 validation_losses = []
@@ -136,7 +139,7 @@ for fold in range(0, FOLD_COUNT):
     l0_output = tf.matmul(tf_flat_images, l0_weights) + l0_biases
 
     # L2 loss
-    training_loss = tf.reduce_sum(tf.pow(l0_output - tf_train_labels, 2)) / (2 * len(training_labels))
+    training_loss = tf.reduce_sum(tf.pow(l0_output - tf_train_labels, 2)) / (2 * len(training_images))
 
     optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(training_loss)
 

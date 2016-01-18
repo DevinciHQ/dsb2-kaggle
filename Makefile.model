@@ -1,5 +1,6 @@
 IMAGES = \
-  doc/images/tflow-minimal-validation.png
+  doc/images/tflow-minimal-validation.png \
+  doc/images/tflow-minimal-4ch-validation.png
 
 
 all: data/dicoms.col $(IMAGES)
@@ -15,6 +16,9 @@ data/dicoms.col:
 
 doc/data/tflow-minimal-validation.txt: programs/tflow-minimal/tflow-minimal.py data/dicoms.col
 	PYTHONPATH=generated/python:python/.libs programs/tflow-minimal/tflow-minimal.py --validation-output=$@
+
+doc/data/tflow-minimal-4ch-validation.txt: programs/tflow-minimal/tflow-minimal.py data/dicoms.col
+	PYTHONPATH=generated/python:python/.libs programs/tflow-minimal/tflow-minimal.py --validation-output=$@ --view=4ch
 
 doc/images/%-validation.png: doc/data/%-validation.txt scripts/plot-validation-data.gnuplot
 	gnuplot -e "input_path='$<'; output_path='$@'" scripts/plot-validation-data.gnuplot
