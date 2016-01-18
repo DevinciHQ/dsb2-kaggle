@@ -10,14 +10,14 @@ void ColumnFileSelect::AddSelection(uint32_t field) {
 }
 
 void ColumnFileSelect::AddFilter(
-    uint32_t field, std::function<bool(const StringRefOrNull&)> filter) {
+    uint32_t field, Delegate<bool(const StringRefOrNull&)> filter) {
   filters_.emplace_back(field, std::move(filter));
 }
 
 void ColumnFileSelect::Execute(
     ev::concurrency::RegionPool& region_pool,
-    std::function<void(
-        const std::vector<std::pair<uint32_t, StringRefOrNull>>&)> callback) {
+    Delegate<void(const std::vector<std::pair<uint32_t, StringRefOrNull>>&)>
+        callback) {
   if (filters_.empty()) {
     input_.SetColumnFilter(selection_.begin(), selection_.end());
     while (!input_.End()) callback(input_.GetRow());

@@ -9,6 +9,7 @@
 #include <kj/debug.h>
 #include <kj/io.h>
 
+#include "base/delegate.h"
 #include "base/region.h"
 #include "base/stringref.h"
 #include "base/thread-pool.h"
@@ -272,20 +273,19 @@ class ColumnFileSelect {
 
   void AddSelection(uint32_t field);
 
-  void AddFilter(uint32_t field,
-                 std::function<bool(const StringRefOrNull&)> filter);
+  void AddFilter(uint32_t field, Delegate<bool(const StringRefOrNull&)> filter);
 
   void Execute(
       ev::concurrency::RegionPool& region_pool,
-      std::function<void(
-          const std::vector<std::pair<uint32_t, StringRefOrNull>>&)> callback);
+      Delegate<void(const std::vector<std::pair<uint32_t, StringRefOrNull>>&)>
+          callback);
 
  private:
   ColumnFileReader input_;
 
   std::unordered_set<uint32_t> selection_;
 
-  std::vector<std::pair<uint32_t, std::function<bool(const StringRefOrNull&)>>>
+  std::vector<std::pair<uint32_t, Delegate<bool(const StringRefOrNull&)>>>
       filters_;
 };
 

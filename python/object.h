@@ -13,7 +13,7 @@ class ScopedObject {
 
   ScopedObject(PyObject* object) : object_(object) {}
 
-  ScopedObject(ScopedObject&) = delete;
+  ScopedObject(const ScopedObject&) = delete;
 
   ScopedObject(ScopedObject&& rhs) { std::swap(object_, rhs.object_); }
 
@@ -26,7 +26,7 @@ class ScopedObject {
   bool operator==(std::nullptr_t) const { return object_ == nullptr; }
   bool operator!=(std::nullptr_t) const { return object_ != nullptr; }
 
-  ScopedObject& operator=(ScopedObject&) = delete;
+  ScopedObject& operator=(const ScopedObject&) = delete;
 
   ScopedObject& operator=(ScopedObject&& rhs) {
     if (object_) {
@@ -45,6 +45,11 @@ class ScopedObject {
     auto result = object_;
     object_ = nullptr;
     return result;
+  }
+
+  void reset(PyObject* ptr) {
+    if (object_) Py_DECREF(object_);
+    object_ = ptr;
   }
 
  private:

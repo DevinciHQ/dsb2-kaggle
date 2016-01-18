@@ -42,4 +42,7 @@ class ColumnFileReader {
   virtual PyObject* offset() = 0;
 };
 
+PyObject* ColumnFile_select(PyObject* path, PyObject* fields, PyObject* filters,
+                            PyObject* callback);
+
 #endif  // !PYTHON_LEVELDB_TABLE_
