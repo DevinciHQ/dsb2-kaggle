@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import array
 import csv
 import dsb2
@@ -8,6 +9,12 @@ import re
 import skimage.transform
 import struct
 import tensorflow as tf
+
+parser = argparse.ArgumentParser(description='Binary document classifier')
+parser.add_argument('--validation-output', metavar='validation_output', type=str, nargs='?',
+                    help='path of validation output',
+                    default=None)
+args = parser.parse_args()
 
 # Matches frame 1 in each study.
 TRAINING_PATH_FILTER = re.compile(r'train/([0-9]+)/study/2ch_[0-9]+/.*-0001\.dcm')
@@ -96,6 +103,8 @@ sample_count = len(training_labels)
 # Per-fold validation losses.
 validation_losses = []
 
+predictions = np.ndarray(shape=(sample_count, 2))
+
 for fold in range(0, FOLD_COUNT):
   range_begin = int(fold * sample_count / FOLD_COUNT)
   range_end = int((fold + 1) * sample_count / FOLD_COUNT)
@@ -151,4 +160,11 @@ for fold in range(0, FOLD_COUNT):
     print('  Training loss:   %8.2f' % training_loss.eval())
     print('  Validation loss: %8.2f' % validation_losses[-1])
 
+    predictions[range_begin:range_end, :] = l0_validation_output.eval()
+
 print('Aggregate validation loss: mean=%.2f stddev=%.2f' % (np.mean(validation_losses), np.std(validation_losses)))
+
+if args.validation_output is not None:
+  with open(args.validation_output, 'w') as output:
+    for prediction, actual in zip(predictions, labels):
+      output.write('%.2f %.2f %.2f %.2f\n' % (prediction[0], prediction[1], actual[0], actual[1]))

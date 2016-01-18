@@ -1,5 +1,20 @@
-all: data/dicoms.col
+IMAGES = \
+  doc/images/tflow-minimal-validation.png
+
+
+all: data/dicoms.col $(IMAGES)
+
+# Does not remove `data/dicoms.col`, since this takes very long to generate,
+# and we don't expect it to change.
+clean:
+	@rm -f $(IMAGES)
 
 data/dicoms.col:
 	@rm -f $@
 	find data/train/ data/validate/ -name \*.dcm -print0 | sort -z | PYTHONPATH=generated/python:python/.libs xargs -0 scripts/load-dicom.py --output-path=$@
+
+doc/data/tflow-minimal-validation.txt: programs/tflow-minimal/tflow-minimal.py data/dicoms.col
+	PYTHONPATH=generated/python:python/.libs programs/tflow-minimal/tflow-minimal.py --validation-output=$@
+
+doc/images/%-validation.png: doc/data/%-validation.txt scripts/plot-validation-data.gnuplot
+	gnuplot -e "input_path='$<'; output_path='$@'" scripts/plot-validation-data.gnuplot
