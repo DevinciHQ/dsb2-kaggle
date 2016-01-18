@@ -14,7 +14,7 @@ To regenerate the images in this report, run:
 # tflow-minimal.py
 
 This is a single-layer network using only the first frame of each 2 chamber or
-4 champer view.  This is equivalent to linear regression using the scaled pixel
+4 chamber view.  This is equivalent to linear regression using the scaled pixel
 data as explanatory variables.
 
 ## 2 Chamber View Model
