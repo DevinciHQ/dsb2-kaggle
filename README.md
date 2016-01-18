@@ -8,7 +8,7 @@ A 3D program written in C++ (with some python scripts) for directly rendering (m
 
 Setup instructions:
 
-    sudo ./isntall-debian-deps.sh
+    sudo ./install-debian-deps.sh
     ./configure
     make
 
@@ -21,3 +21,8 @@ Tensorflow
 ----------
 
 A series of deep learning models written using tensorflow.
+
+Other Documents
+---------------
+
+  * [Model Performance Report](doc/REPORT.md)
