@@ -10,7 +10,7 @@ import skimage.transform
 import struct
 import tensorflow as tf
 
-parser = argparse.ArgumentParser(description='Binary document classifier')
+parser = argparse.ArgumentParser(description='DSB2 Neural Net Model')
 parser.add_argument('--validation-output', metavar='validation_output', type=str, nargs='?',
                     help='path of validation output',
                     default=None)
