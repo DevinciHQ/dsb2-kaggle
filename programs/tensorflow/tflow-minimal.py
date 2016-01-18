@@ -45,12 +45,12 @@ def ReadTrainingLabels():
   return result
 
 # Maps from training instance ("study") to 2D images.
-training_images = {}
+images = {}
 
 # Given a row from the column file, read the stored image into the
-# `training_images` dictionary.
+# `images` dictionary.
 def LoadTrainingInstance(row):
-  global training_images
+  global images
 
   study = int(TRAINING_PATH_FILTER.search(row[0]).groups()[0])
 
@@ -72,7 +72,7 @@ def LoadTrainingInstance(row):
   # Resize to standard size.
   pixels = skimage.transform.resize(pixels, [IMAGE_SIZE, IMAGE_SIZE])
 
-  training_images[study] = pixels
+  images[study] = pixels
 
 dsb2.ColumnFile_select(
     'data/dicoms.col',
@@ -80,46 +80,39 @@ dsb2.ColumnFile_select(
     [(0L, lambda s: TRAINING_PATH_FILTER.search(s))],
     LoadTrainingInstance)
 
-training_labels = ReadTrainingLabels()
-
-dataset = np.ndarray(
-        shape=(len(training_images), IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
-labels = np.ndarray(shape=(len(training_images), OUTPUT_COUNT), dtype=np.float32)
+np_images = np.ndarray(
+        shape=(len(images), IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)
+np_labels = np.ndarray(shape=(len(images), OUTPUT_COUNT), dtype=np.float32)
 
 idx = 0
 
-for study, study_labels in training_labels.iteritems():
-  if study not in training_images:
+for study, study_labels in ReadTrainingLabels().iteritems():
+  if study not in images:
     continue
-  dataset[idx, :, :] = training_images[study]
-  labels[idx, :] = study_labels
+  np_images[idx, :, :] = images[study]
+  np_labels[idx, :] = study_labels
   idx += 1
 
 # Split dataset into training and validation.
 np.random.seed(1234)
-permutation = np.random.permutation(labels.shape[0])
-dataset = dataset[permutation, :, :]
-labels = labels[permutation, :]
-
-sample_count = len(training_images)
+permutation = np.random.permutation(np_labels.shape[0])
+np_images = np_images[permutation, :, :]
+np_labels = np_labels[permutation, :]
 
 # Per-fold validation losses.
 validation_losses = []
 
-predictions = np.ndarray(shape=(sample_count, 2))
+predictions = np.ndarray(shape=(len(np_labels), 2))
 
 for fold in range(0, FOLD_COUNT):
+  sample_count = len(images)
   range_begin = int(fold * sample_count / FOLD_COUNT)
   range_end = int((fold + 1) * sample_count / FOLD_COUNT)
 
-  validation_dataset = dataset[range_begin:range_end, :, :]
-  validation_labels = labels[range_begin:range_end, :]
-  if range_begin > 0:
-    train_dataset = np.concatenate([dataset[:range_begin, :, :], dataset[range_end:, :, :]])
-    train_labels = np.concatenate([labels[:range_begin, :], labels[range_end:, :]])
-  else:
-    train_dataset = dataset[range_end:, :, :]
-    train_labels = labels[range_end:, :]
+  validation_dataset = np_images[range_begin:range_end, :, :]
+  validation_labels = np_labels[range_begin:range_end, :]
+  train_dataset = np.concatenate([np_images[:range_begin, :, :], np_images[range_end:, :, :]])
+  train_labels = np.concatenate([np_labels[:range_begin, :], np_labels[range_end:, :]])
 
   # Build the graph
   graph = tf.Graph()
@@ -139,7 +132,7 @@ for fold in range(0, FOLD_COUNT):
     l0_output = tf.matmul(tf_flat_images, l0_weights) + l0_biases
 
     # L2 loss
-    training_loss = tf.reduce_sum(tf.pow(l0_output - tf_train_labels, 2)) / (2 * len(training_images))
+    training_loss = tf.reduce_sum(tf.pow(l0_output - tf_train_labels, 2)) / (2 * len(train_labels))
 
     optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(training_loss)
 
@@ -169,5 +162,5 @@ print('Aggregate validation loss: mean=%.2f stddev=%.2f' % (np.mean(validation_l
 
 if args.validation_output is not None:
   with open(args.validation_output, 'w') as output:
-    for prediction, actual in zip(predictions, labels):
+    for prediction, actual in zip(predictions, np_labels):
       output.write('%.2f %.2f %.2f %.2f\n' % (prediction[0], prediction[1], actual[0], actual[1]))
