@@ -1,7 +1,9 @@
 IMAGES = \
   doc/images/tflow-minimal-validation.png \
   doc/images/tflow-minimal-4ch-validation.png
-
+DATA = \
+  doc/data/tflow-minimal-validation.txt \
+  doc/data/tflow-minimal-4ch-validation.txt
 
 all: data/dicoms.col $(IMAGES)
 
@@ -9,16 +11,17 @@ all: data/dicoms.col $(IMAGES)
 # and we don't expect it to change.
 clean:
 	@rm -f $(IMAGES)
+	@rm -f $(DATA)
 
 data/dicoms.col:
 	@rm -f $@
 	find data/train/ data/validate/ -name \*.dcm -print0 | sort -z | PYTHONPATH=generated/python:python/.libs xargs -0 scripts/load-dicom.py --output-path=$@
 
-doc/data/tflow-minimal-validation.txt: programs/tflow-minimal/tflow-minimal.py data/dicoms.col
-	PYTHONPATH=generated/python:python/.libs programs/tflow-minimal/tflow-minimal.py --validation-output=$@
+doc/data/tflow-minimal-validation.txt: programs/tensorflow/tflow-minimal.py data/dicoms.col
+	PYTHONPATH=generated/python:python/.libs programs/tensorflow/tflow-minimal.py --validation-output=$@
 
-doc/data/tflow-minimal-4ch-validation.txt: programs/tflow-minimal/tflow-minimal.py data/dicoms.col
-	PYTHONPATH=generated/python:python/.libs programs/tflow-minimal/tflow-minimal.py --validation-output=$@ --view=4ch
+doc/data/tflow-minimal-4ch-validation.txt: programs/tensorflow/tflow-minimal.py data/dicoms.col
+	PYTHONPATH=generated/python:python/.libs programs/tensorflow/tflow-minimal.py --validation-output=$@ --view=4ch
 
 doc/images/%-validation.png: doc/data/%-validation.txt scripts/plot-validation-data.gnuplot
 	gnuplot -e "input_path='$<'; output_path='$@'" scripts/plot-validation-data.gnuplot

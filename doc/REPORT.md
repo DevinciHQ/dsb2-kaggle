@@ -8,8 +8,8 @@ predictions made in each fold.
 To regenerate the images in this report, run:
 
     make
-    make -f Makefile.model clean
-    make -f Makefile.model
+    make -j1 -f Makefile.model clean
+    make -j1 -f Makefile.model
 
 # tflow-minimal.py
 

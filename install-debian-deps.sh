@@ -3,6 +3,7 @@
 apt-get install \
   automake  \
   build-essential \
+  gnuplot \
   libglew-dev \
   libgsl0-dev \
   liblz4-dev \

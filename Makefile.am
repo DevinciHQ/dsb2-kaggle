@@ -18,8 +18,8 @@ TESTS = $(check_PROGRAMS)
 AM_TESTS_ENVIRONMENT = PYTHONPATH=$(srcdir)/generated/python:$(srcdir)/python/.libs; export PYTHONPATH;
 
 AM_CPPFLAGS = -I$(srcdir) -I. $(CAPNP_CFLAGS)
-AM_CFLAGS = -g -Wall -march=native
-AM_CXXFLAGS = -g -Wall -march=native
+AM_CFLAGS = -g -Wall -march=native -O3
+AM_CXXFLAGS = -g -Wall -march=native -O3
 AM_LDFLAGS = -lpthread
 
 ACLOCAL_AMFLAGS = -I m4
