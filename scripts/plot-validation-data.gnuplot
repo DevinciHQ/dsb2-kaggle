@@ -1,6 +1,8 @@
 #!/usr/bin/env gnuplot
 
-set terminal pngcairo size 800,600
+# 888 is the pixel width of the GitHub Markdown viewer.
+set terminal pngcairo size 888,600
+
 set output output_path
 set grid
 set title input_path

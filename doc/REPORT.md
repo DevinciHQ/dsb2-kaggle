@@ -1,4 +1,4 @@
-Model Perforamnce Report
+Model Performance Report
 ========================
 
 This file is intended to document the performance of the various models.
@@ -11,7 +11,7 @@ To regenerate the images in this report, run:
     make -f Makefile.model clean
     make -f Makefile.model
 
-# `tflow-minimal.py`
+# tflow-minimal.py
 
 This is a single-layer network using only the first frame of each 2 chamber
 view.  This is equivalent to linear regression using the scaled pixel data as
