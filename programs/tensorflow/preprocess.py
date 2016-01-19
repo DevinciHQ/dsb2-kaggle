@@ -57,6 +57,7 @@ initial_data = initial_data.drop_duplicates(keep='first', subset='Id')
 ## DATA CLEANUP
 
 # Set the Patient Age to an integer (drop the 'Y')
+#TODO.. Can't assume there is always a Y, the youngest is in months.
 initial_data['PatientAge'] = initial_data['PatientAge'].apply(lambda x: int(x[:-1]))
 
 
