@@ -53,5 +53,16 @@ df = pandas.DataFrame(dicom_data)
 initial_data = initial_data.merge(df, on='Id', how='outer')
 initial_data = initial_data.drop_duplicates(keep='first', subset='Id')
 
+
+## DATA CLEANUP
+
+# Set the Patient Age to an integer (drop the 'Y')
+initial_data['PatientAge'] = initial_data['PatientAge'].apply(lambda x: int(x[:-1]))
+
+
+
+
+## SAVE THE FILE
+
 # 500 rows, creates a 1.5M file.
 initial_data.to_pickle(data_dir + 'metadata.pickle')
