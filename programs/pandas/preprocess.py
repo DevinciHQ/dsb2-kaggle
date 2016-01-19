@@ -27,6 +27,12 @@ for i in img_files:
     # Create an "Id" column so we have a similar column to join on later.
     record = {'Id': int(pxid)}
     col_names = ds.dir()
+    
+    wanted_col = [
+        'PatientSex',
+        'PatientAge',
+
+    ]
 
      # Remove the PixelData as it's not needed here.
     for unwanted_col in ['PixelData'] :
