@@ -1,6 +1,7 @@
 IMAGES = \
-  doc/images/tflow-minimal-validation.png \
-  doc/images/tflow-minimal-4ch-validation.png
+  doc/images/tflow-4ch-stack-validation.png \
+  doc/images/tflow-minimal-4ch-validation.png \
+  doc/images/tflow-minimal-validation.png
 DATA = \
   doc/data/tflow-minimal-validation.txt \
   doc/data/tflow-minimal-4ch-validation.txt
@@ -22,6 +23,9 @@ doc/data/tflow-minimal-validation.txt: programs/tensorflow/tflow-minimal.py data
 
 doc/data/tflow-minimal-4ch-validation.txt: programs/tensorflow/tflow-minimal.py data/dicoms.col
 	PYTHONPATH=generated/python:python/.libs programs/tensorflow/tflow-minimal.py --validation-output=$@ --view=4ch
+
+doc/data/tflow-4ch-stack-validation.txt: programs/tensorflow/tflow-4ch-stack.py data/dicoms.col
+	PYTHONPATH=generated/python:python/.libs programs/tensorflow/tflow-4ch-stack.py --validation-output=$@
 
 doc/images/%-validation.png: doc/data/%-validation.txt scripts/plot-validation-data.gnuplot
 	gnuplot -e "input_path='$<'; output_path='$@'" scripts/plot-validation-data.gnuplot

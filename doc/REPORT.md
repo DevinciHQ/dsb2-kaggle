@@ -8,7 +8,7 @@ predictions made in each fold.
 To regenerate the images in this report, run:
 
     make
-    make -j1 -f Makefile.model clean
+    make -f Makefile.model clean
     make -j1 -f Makefile.model
 
 # tflow-minimal.py
@@ -24,3 +24,9 @@ data as explanatory variables.
 ## 4 Chamber View Model
 
 ![tflow-minimal-4ch validation](images/tflow-minimal-4ch-validation.png)
+
+# tflow-4ch-stack
+
+This model is trained on all 30 frames of each 4 chamber view.
+
+![tflow-4ch-stack validation](images/tflow-4ch-stack-validation.png)
