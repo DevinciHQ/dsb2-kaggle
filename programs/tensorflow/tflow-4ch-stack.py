@@ -26,7 +26,7 @@ OUTPUT_COUNT = 2
 
 LEARNING_RATE = 0.0000001
 
-BATCH_COUNT = 400
+BATCH_COUNT = 1000
 
 FOLD_COUNT = 10
 
@@ -124,68 +124,66 @@ for fold in range(0, FOLD_COUNT):
   train_labels = np.concatenate([np_labels[:range_begin, :], np_labels[range_end:, :]])
 
   training_means = np.mean(train_labels, axis=0)
+  training_scales = np.std(train_labels, axis=0)
 
   # Build the graph
   graph = tf.Graph()
   with graph.as_default():
     tf.set_random_seed(1234)
 
-    tf_train_images = tf.constant(train_dataset)
-    tf_train_labels = tf.constant(train_labels)
+    # Settings these as constants ensures all the training data stays on the
+    # GPU, so we save a lot of time not re-uploading it.
+    X = tf.constant(train_dataset)
+    y = tf.constant(train_labels / training_scales)
 
     # Fully connected layers need 2D input.
-    tf_flat_images = tf.reshape(tf_train_images, [-1, 30 * IMAGE_SIZE * IMAGE_SIZE])
+    flat_images = tf.reshape(X, [-1, 30 * IMAGE_SIZE * IMAGE_SIZE])
 
     # First fully connected layer.
     l0_weights = tf.Variable(tf.truncated_normal([30 * IMAGE_SIZE * IMAGE_SIZE, 128]))
     l0_biases = tf.Variable(tf.zeros([128]))
-    l0_output = tf.nn.relu(tf.matmul(tf.nn.dropout(tf_flat_images, 0.2), l0_weights) + l0_biases)
+    l0_output = tf.nn.relu(tf.matmul(tf.nn.dropout(flat_images, 0.2), l0_weights) + l0_biases)
 
     # Second fully connected layer.
     l1_weights = tf.Variable(tf.truncated_normal([128, OUTPUT_COUNT]))
     l1_biases = tf.Variable(tf.zeros([OUTPUT_COUNT]))
     l1_output = tf.matmul(l0_output, l1_weights) + l1_biases
 
-    # Add means
-    final_bias = tf.constant(training_means)
-    final_output = l1_output + final_bias
-
     # L2 loss
-    training_loss = tf.reduce_sum(tf.pow(final_output - tf_train_labels, 2)) / (2 * len(train_labels))
+    loss = tf.reduce_mean(tf.square(l1_output - y), 0)
 
-    optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(training_loss)
-
-    # The same operations repeated for validation purposes.
-    tf_validation_images = tf.constant(validation_dataset)
-    tf_validation_labels = tf.constant(validation_labels)
-    tf_flat_validation_images = tf.reshape(tf_validation_images, [-1, 30 * IMAGE_SIZE * IMAGE_SIZE])
-    validation_l0_output = tf.nn.relu(tf.matmul(tf_flat_validation_images, l0_weights) + l0_biases)
-    validation_l1_output = tf.matmul(validation_l0_output, l1_weights) + l1_biases
-    validation_final_output = validation_l1_output + final_bias
-    validation_loss = tf.reduce_sum(tf.pow(validation_final_output - tf_validation_labels, 2)) / (2 * len(validation_labels))
+    optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(loss)
 
   # Train and evaluate
   with tf.Session(graph=graph) as session:
     tf.initialize_all_variables().run()
 
-    for i in range(0, BATCH_COUNT):
-      if 0 == (i % 10):
-        print(i, training_loss.eval(), validation_loss.eval())
-      optimizer.run()
-
-    validation_losses.append(validation_loss.eval())
-
     print('Fold %s (size=%s):' % (fold, range_end - range_begin))
-    print('  Training loss:   %8.2f' % training_loss.eval())
-    print('  Validation loss: %8.2f' % validation_losses[-1])
 
-    predictions[range_begin:range_end, :] = validation_final_output.eval()
+    validation_feed = {
+        X: validation_dataset,
+        y: validation_labels / training_scales
+        }
+
+    for i in range(0, BATCH_COUNT):
+      optimizer.run()
+      if 0 == (i % 50):
+        training_loss = loss.eval()
+        validation_loss = loss.eval(feed_dict=validation_feed)
+        print(i, training_loss, validation_loss)
+
+    validation_losses.append(loss.eval(feed_dict=validation_feed))
+
+    output = l1_output.eval(feed_dict=validation_feed) * training_scales
+    predictions[range_begin:range_end, :] = output
 
 print('Aggregate validation loss: mean=%.2f stddev=%.2f' % (np.mean(validation_losses), np.std(validation_losses)))
 
 if args.validation_output is not None:
   with open(args.validation_output, 'w') as output:
     for prediction, actual in zip(predictions, np_labels):
-      output.write('%.2f %.2f %.2f %.2f\n' % (prediction[0], prediction[1], actual[0], actual[1]))
-
-# Aggregate validation loss: mean=2674.70 stddev=1429.00
+      output.write('%.2f %.2f %.2f %.2f\n' % (
+        max(0, prediction[0]),
+        max(0, prediction[1]),
+        actual[0],
+        actual[1]))
