@@ -13,21 +13,18 @@ def Distribution(mean, stddev):
   return result
 
 
-for p in sys.argv[1:]:
-  data = p.split(',')
-  assert len(data) == 3, data
-  stddev_y0 = float(data[0])
-  stddev_y1 = float(data[1])
-
-  with open(data[2], 'r') as f:
+for path in sys.argv[1:]:
+  with open(path, 'r') as f:
     for line in f:
       row = line.split('\t')
       study = int(row[0])
       y0 = float(row[1])
       y1 = float(row[2])
+      y0_stddev = float(row[3])
+      y1_stddev = float(row[4])
 
-      dist_y0 = Distribution(y0, stddev_y0)
-      dist_y1 = Distribution(y1, stddev_y1)
+      dist_y0 = Distribution(y0, y0_stddev)
+      dist_y1 = Distribution(y1, y1_stddev)
 
       if study not in result:
         result[study] = []

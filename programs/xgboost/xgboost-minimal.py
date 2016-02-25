@@ -4,6 +4,7 @@ import argparse
 import bayes_opt
 import csv
 import dsb2
+import math
 import numpy
 import re
 import sys
@@ -20,6 +21,10 @@ args = parser.parse_args()
 
 # Matches frame 1 in each study.
 TRAINING_PATH_FILTER = re.compile(r'[^/]+/([0-9]+)/study/2ch_[0-9]+/.*-0001\.dcm')
+
+# If our variance model produces numbers smaller than this, we substitude this
+# value.
+MIN_VARIANCE = 100
 
 FOLD_COUNT = 10
 
@@ -106,6 +111,9 @@ def GetXGBRegressor():
 #       n_estimators=100, nthread=-1, objective='reg:linear', seed=0,
 #       silent=True, subsample=1)
 
+# Values used to build error model.
+y0_predictions = []
+y1_predictions = []
 y0_errors = []
 y1_errors = []
 
@@ -126,14 +134,18 @@ for fold in range(0, FOLD_COUNT):
   y1_model = GetXGBRegressor().fit(X_train, y1_train)
 
   for values in zip(y0_model.predict(X_test), y1_model.predict(X_test), y0_test, y1_test):
-    y0_errors.append(abs(values[2] - values[0]))
-    y1_errors.append(abs(values[3] - values[1]))
     if validation_output is not None:
       validation_output.write('%.2f %.2f %.2f %.2f\n' % values)
+    y0_predictions.append(values[0])
+    y1_predictions.append(values[1])
+    y0_errors.append((values[2] - values[0]) ** 2)
+    y1_errors.append((values[3] - values[1]) ** 2)
 
   validation_output.flush()
 
-sys.stderr.write('Standard deviation: %.3f %.3f\n' % (numpy.std(y0_errors), numpy.std(y1_errors)))
+# Predict squared error (variance) for a given prediction.
+y0_error_model = numpy.polyfit(y0_predictions, y0_errors, deg=2)
+y1_error_model = numpy.polyfit(y1_predictions, y1_errors, deg=2)
 
 if args.prediction_output is not None:
   prediction_output = open(args.prediction_output, 'w')
@@ -142,6 +154,10 @@ if args.prediction_output is not None:
   y1_model = GetXGBRegressor().fit(X, y1)
 
   for values in zip(study_validate, y0_model.predict(X_validate), y1_model.predict(X_validate)):
-    prediction_output.write('%s\t%s\t%s\n' % values)
+    y0 = values[1]
+    y1 = values[2]
+    prediction_output.write('%s\t%s\t%s\t%s\t%s\n' % (values[0], y0, y1,
+      math.sqrt(max(MIN_VARIANCE, y0_error_model[0] * y0 * y0 + y0_error_model[1] * y0 + y0_error_model[2])),
+      math.sqrt(max(MIN_VARIANCE, y1_error_model[0] * y1 * y1 + y1_error_model[1] * y1 + y1_error_model[2]))))
 
   prediction_output.close()
