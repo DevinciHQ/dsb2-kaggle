@@ -50,8 +50,6 @@ for study in sorted(result.keys()):
   p = result[study]
   sys.stdout.write('%u_Diastole' % study)
   for i in range(0, 600):
-    if p[0][0][i] == 1:
-      sys.stdout.write(',1')
     sys.stdout.write(',%s' % FormatNumber(p[0][0][i]))
   sys.stdout.write('\n')
   sys.stdout.write('%u_Systole' % study)

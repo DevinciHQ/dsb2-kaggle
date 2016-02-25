@@ -42,4 +42,4 @@ doc/images/%-validation.png: doc/data/%-validation.txt scripts/plot-validation-d
 	gnuplot -e "input_path='$<'; output_path='$@'" scripts/plot-validation-data.gnuplot
 
 generated/submission.csv: generated/xgboost-minimal-predictions.txt
-	programs/create-submission.py 32.075,36.955,generated/xgboost-minimal-predictions.txt
+	programs/create-submission.py 32.075,36.955,generated/xgboost-minimal-predictions.txt > $@
