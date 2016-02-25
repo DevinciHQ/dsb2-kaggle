@@ -1,12 +1,14 @@
 IMAGES = \
   doc/images/tflow-4ch-stack-validation.png \
   doc/images/tflow-minimal-4ch-validation.png \
-  doc/images/tflow-minimal-validation.png
+  doc/images/tflow-minimal-validation.png  \
+  doc/images/xgboost-minimal-validation.png
 DATA = \
   doc/data/tflow-minimal-validation.txt \
-  doc/data/tflow-minimal-4ch-validation.txt
+  doc/data/tflow-minimal-4ch-validation.txt \
+  generated/xgboost-minimal-predictions.txt
 
-all: data/dicoms.col $(IMAGES)
+all: data/dicoms.col generated/submission.csv $(IMAGES)
 
 # Does not remove `data/dicoms.col`, since this takes very long to generate,
 # and we don't expect it to change.
@@ -17,6 +19,15 @@ clean:
 data/dicoms.col:
 	@rm -f $@
 	find data/train/ data/validate/ -name \*.dcm -print0 | sort -z | PYTHONPATH=generated/python:python/.libs xargs -0 scripts/load-dicom.py --output-path=$@
+
+doc/data/xgboost-minimal-validation.txt: programs/xgboost/xgboost-minimal.py data/dicoms.col
+	PYTHONPATH=generated/python:python/.libs programs/xgboost/xgboost-minimal.py --validation-output=doc/data/xgboost-minimal-validation.txt --prediction-output=generated/xgboost-minimal-predictions.txt
+
+generated/xgboost-minimal-predictions.txt: doc/data/xgboost-minimal-validation.txt
+	@if test -f $@; then :; else \
+	  rm -f doc/data/xgboost-minimal-validation.txt; \
+	  $(MAKE) -f Makefile.model doc/data/xgboost-minimal-validation.txt; \
+	fi
 
 doc/data/tflow-minimal-validation.txt: programs/tensorflow/tflow-minimal.py data/dicoms.col
 	PYTHONPATH=generated/python:python/.libs programs/tensorflow/tflow-minimal.py --validation-output=$@
@@ -29,3 +40,6 @@ doc/data/tflow-4ch-stack-validation.txt: programs/tensorflow/tflow-4ch-stack.py 
 
 doc/images/%-validation.png: doc/data/%-validation.txt scripts/plot-validation-data.gnuplot
 	gnuplot -e "input_path='$<'; output_path='$@'" scripts/plot-validation-data.gnuplot
+
+generated/submission.csv: generated/xgboost-minimal-predictions.txt
+	programs/create-submission.py 32.075,36.955,generated/xgboost-minimal-predictions.txt

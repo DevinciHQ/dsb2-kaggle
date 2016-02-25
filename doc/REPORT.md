@@ -11,6 +11,12 @@ To regenerate the images in this report, run:
     make -f Makefile.model clean
     make -j1 -f Makefile.model
 
+# xgboost-minimal.py
+
+This is an XGBoost model based on age and gender metadata.
+
+![xgboost-minimal validation](images/xgboost-minimal-validation.png)
+
 # tflow-minimal.py
 
 This is a single-layer network using only the first frame of each 2 chamber or
