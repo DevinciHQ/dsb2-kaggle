@@ -13,4 +13,5 @@ set xrange [0:600]
 set yrange [0:600]
 
 plot input_path using 1:3 with points pointtype 7 title "End-systolic", \
-     input_path using 2:4 with points pointtype 7 title "End-diastolic"
+     input_path using 2:4 with points pointtype 7 title "End-diastolic", \
+     x with lines linecolor rgb "#aaaaaa" notitle
